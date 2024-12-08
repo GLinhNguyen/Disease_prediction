@@ -1,107 +1,37 @@
-# import streamlit as st
-# import pandas as pd
-# import numpy as np
-# import nbformat
-# from pyspark.sql import SparkSession
-# from pyspark.ml.feature import VectorAssembler
-# from notebook import *
-# from nbconvert import PythonExporter
-# # Load the notebook file
-# with open(r'e:/third year/Big_Data_Tech/Project/Disease_prediction/notebook.ipynb') as f:
-#     notebook_content = f.read()
-
-# # Convert the notebook to Python code
-# notebook_node = nbformat.reads(notebook_content, as_version=4)
-# exporter = PythonExporter()
-# source, _ = exporter.from_notebook_node(notebook_node)
-
-# # Execute the notebook code
-# execution_context = {}
-# exec(source, execution_context)
-# top_features = execution_context.get("top_features")
-
-# rf_model = execution_context.get("rf_model", None)
-# # Initialize Spark session
-# spark = SparkSession.builder.appName("DiseasePrediction").getOrCreate()
-
-# # Streamlit UI
-
-# # Streamlit UI
-# st.title("Disease Prediction")
-
-# # Feature selection dropdowns
-# selected_symptoms = []
-# for i in range(1, 6):  # For symptoms 1 to 7
-#     selected_symptom = st.selectbox(f"Symptom {i}",   options=[""] + top_features, key=f"symptom_{i}")
-#     selected_symptoms.append(selected_symptom)
-
-# # Predict button
-# # Predict button
-# if st.button("Predict your disease"):
-#     # Check if all symptoms are selected (not blank)
-#     if "" in selected_symptoms:
-#         st.warning("Please select all symptoms before predicting.")
-#     else:
-#         # Convert selected symptoms into a Spark DataFrame
-#         symptoms_df = spark.createDataFrame(
-#             [[selected_symptoms]], schema=top_features
-#         )
-
-#         # Assemble features
-#         assembler = VectorAssembler(inputCols=top_features, outputCol="features")
-#         symptoms_features_df = assembler.transform(symptoms_df)
-
-#         # Make predictions
-#         predictions = rf_model.transform(symptoms_features_df)
-
-#         # Extract the predicted label
-#         predicted_label = predictions.select("prediction").collect()[0]["prediction"]
-
-#         # Display the result
-#         st.write("Your disease is:", predicted_label)
-
-  
-
-
-import streamlit as st
 import pandas as pd
 import numpy as np
 import nbformat
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.tuning import CrossValidatorModel
 from nbconvert import PythonExporter
-
-# Load the notebook file
-notebook_file_path = r'e:/third year/Big_Data_Tech/Project/Disease_prediction/notebook.ipynb'
-
-# Function to convert notebook to Python code
-def convert_notebook_to_python(notebook_file_path):
-    with open(notebook_file_path, "r") as f:
-        notebook_content = f.read()
-    notebook_node = nbformat.reads(notebook_content, as_version=4)
-    exporter = PythonExporter()
-    source, _ = exporter.from_notebook_node(notebook_node)
-    return source
-
-# Execute the notebook code to extract variables
-def execute_notebook_code(source):
-    execution_context = {}
-    exec(source, execution_context)
-    return execution_context
-
-# Streamlit UI
+import json
+import streamlit as st
 st.title("Disease Prediction")
+st.write("Select symptoms to predict the disease.")
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("DiseasePrediction").getOrCreate()
 
-# Convert notebook to Python and execute the code to get variables
-source = convert_notebook_to_python(notebook_file_path)
-execution_context = execute_notebook_code(source)
+top_features_path = "/Users/baonguyen/Desktop/Disease_prediction/top_features.json"
+try:
+    with open(top_features_path, "r") as file:
+        top_features = json.load(file)
+except FileNotFoundError:
+    top_features = []
+    st.error("Error: top_features.json file not found!")
+except json.JSONDecodeError as e:
+    top_features = []
+    st.error(f"Error decoding JSON: {e}")
 
-# Extract top features and the trained model from the executed notebook
-top_features = execution_context.get("top_features", [])
-rf_model = execution_context.get("rf_model", None)
+# Load the saved model
+rf_model_path = "/Users/baonguyen/Desktop/Disease_prediction/rf_model"
+try:
+    rf_model = CrossValidatorModel.load(rf_model_path)
+    st.success("Model loaded successfully!")
+except Exception as e:
+    rf_model = None
+    st.error(f"Error loading model: {e}")
 
 if not top_features or not rf_model:
     st.error("Model or top features not found in the notebook.")
@@ -121,7 +51,7 @@ else:
             # Convert selected symptoms into a Spark DataFrame
             symptoms_df = spark.createDataFrame([[selected_symptoms]], schema=selected_symptoms)
 
-            # Assemble features
+            # Assemble features 
             assembler = VectorAssembler(inputCols=top_features, outputCol="features")
             symptoms_features_df = assembler.transform(symptoms_df)
 
@@ -133,4 +63,3 @@ else:
 
             # Display the result
             st.write("Your predicted disease is:", predicted_label)
-
