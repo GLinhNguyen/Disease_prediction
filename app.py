@@ -4,58 +4,77 @@ import json
 import streamlit as st
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import VectorAssembler
-from pyspark.ml.tuning import CrossValidatorModel
-from pyspark.sql.types import StructType, StructField, StringType
+from pyspark.ml.classification import RandomForestClassificationModel, DecisionTreeClassificationModel
+
+from pyspark import SparkContext, SparkConf
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 
 st.title("Disease Prediction")
 st.write("Select symptoms to predict the disease.")
 
+# Check if SparkContext already exists
+if not SparkContext._active_spark_context:
+    conf = SparkConf().setAppName("Disease_Prediction").setMaster("local[*]")
+    sc = SparkContext(conf=conf)
+
 # Initialize Spark session
 spark = SparkSession.builder \
-    .appName("DiseasePrediction") \
-    .config("spark.executor.memory", "2g") \
-    .config("spark.driver.memory", "2g") \
-    .config("spark.driver.host", "127.0.0.1") \
+    .appName("Disease_Prediction") \
     .getOrCreate()
 
+
 # Path to top features JSON file
-top_features_path = r"E:\third year\Big_Data_Tech\Project\Disease_prediction\top_features.json"
+top_features_path = r"E:\third year\Big_Data_Tech\Project\Disease_prediction\features.json"
 try:
     with open(top_features_path, "r") as file:
-        top_features = json.load(file)
+        features = json.load(file)
 except FileNotFoundError:
-    top_features = []
+    features = []
     st.error("Error: top_features.json file not found!")
 except json.JSONDecodeError as e:
-    top_features = []
+    features = []
     st.error(f"Error decoding JSON: {e}")
+import shutil
+import os
+
+# Specify Spark temp directories
+temp_dirs = ['/tmp/spark-local', '/tmp/spark-temp']
+
+for d in temp_dirs:
+    if os.path.exists(d):
+        shutil.rmtree(d)
 
 # Load the saved model
 rf_model_path = r"E:\third year\Big_Data_Tech\Project\Disease_prediction\models\Random Forest"
+nb_model_path = r"E:\third year\Big_Data_Tech\Project\Disease_prediction\models\Naive Bayes"
 try:
-    rf_model = CrossValidatorModel.load(rf_model_path)
+    rf_model = RandomForestClassificationModel.load(rf_model_path)
+    
     st.success("Model loaded successfully!")
 except Exception as e:
     rf_model = None
     st.error(f"Error loading model: {e}")
 
-# Feature selection dropdowns
+# Allow user to select 5 symptoms from the list
 selected_symptoms = []
-for i in range(1, 6):  # For symptoms 1 to 5 (or however many features)
-    selected_symptom = st.selectbox(f"Symptom {i}", options=[""] + top_features, key=f"symptom_{i}")
-    selected_symptoms.append(selected_symptom)
+for i in range(5):  # Allow selection of 5 symptoms only
+    symptom = st.selectbox(f"Symptom {i+1}", options=[""] + features, key=f"symptom_{i}")
+    if symptom:
+        selected_symptoms.append(symptom)
 
-# Predict button
+# Make prediction based on selected symptoms
 if st.button("Predict your disease"):
-    # Check if all symptoms are selected (not blank)
-    if "" in selected_symptoms:
-        st.warning("Please select all symptoms before predicting.")
+    if len(selected_symptoms) == 0:
+        st.warning("Please select at least one symptom.")
     else:
-        # Create a dictionary for the selected symptoms
-        symptoms_dict = {symptom: 1 for symptom in selected_symptoms}
+        # Map selected symptoms to binary values (1 for selected, 0 for not selected)
+        symptoms_dict = {symptom: 1 if symptom in selected_symptoms else 0 for symptom in features}
+
+        # # Convert the dictionary to a DataFrame
+        # symptoms_df = pd.DataFrame([symptoms_dict])
 
         # Convert selected symptoms into a Spark DataFrame
-        schema = StructType([StructField(symptom, StringType(), True) for symptom in selected_symptoms])
+        schema = StructType([StructField(symptom, IntegerType(), True) for symptom in selected_symptoms])
         symptoms_df = spark.createDataFrame([symptoms_dict], schema=schema)
 
         # Assemble features
@@ -66,11 +85,9 @@ if st.button("Predict your disease"):
         predictions = rf_model.transform(symptoms_features_df)
 
         # Extract the predicted label
-        predicted_label = predictions.select("prognosis").collect()[0]["prognosis"]
-
+        predicted_label = predictions.select("prediction").collect()[0]["prognosis"]
         # Display the result
         st.write("Your predicted disease is:", predicted_label)
 
 # Stop the Spark session
 spark.stop()
-
