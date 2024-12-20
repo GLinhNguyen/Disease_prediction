@@ -6,8 +6,9 @@
 
 ## Documents    
 To run Streamlit web:
-   
+ ~~~
    streamlit run app.py
+ ~~~
 
 Dataset: [Here](https://www.kaggle.com/datasets/kaushil268/disease-prediction-using-machine-learning/data)
 
