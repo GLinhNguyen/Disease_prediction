@@ -1,10 +1,20 @@
-link of dataset: https://www.kaggle.com/datasets/kaushil268/disease-prediction-using-machine-learning/data
-paste this in terminal :
-    source myenv/bin/activate
-    
+# Disease Prediction
++ Using Big Data technology: HDFS, Apache Spark ML
++ Comparing different models like Decision Tree, Random Forest, and Naive Bayes ​
++ Integrates distributed data processing, machine learning pipelines, and hyperparameter tuning ​
+
+
+## Documents    
 To run Streamlit web:
-    terminal: streamlit run app.py
-    
+   
+   streamlit run app.py
+
+Dataset: [Here](https://www.kaggle.com/datasets/kaushil268/disease-prediction-using-machine-learning/data)
+
 Link to presentation: [Here](https://mphcmiuedu-my.sharepoint.com/:p:/g/personal/itdsiu22173_student_hcmiu_edu_vn/ERl_kvqnmQ1Agy05NLE-NicBqEGQpB8epm58bpbJ8QKjlQ?e=LUJYWB)    
 
-Report: [Download Report](Bigdata_projectReport.pdf)
+Report: [Here](Bigdata_projectReport.pdf)
+
+## Documents 
+Nguyen Huy Bao
+Nguyen Ngoc Gia Linh
